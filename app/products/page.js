@@ -80,7 +80,7 @@ export default function ProductsPage() {
   if (loading) {
     return (
       <Sidebar>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', paddingTop: '40px' }}>
+        <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '0 24px', paddingTop: '40px' }}>
           <p style={{ color: '#a1a1b9' }}>Loading products...</p>
         </div>
       </Sidebar>
@@ -148,7 +148,7 @@ export default function ProductsPage() {
 
   return (
     <Sidebar>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '0 24px' }}>
         {/* Header */}
         <div style={{ 
           display: 'flex', 

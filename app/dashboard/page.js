@@ -158,7 +158,7 @@ export default function DashboardPage() {
 
   return (
     <Sidebar>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '0 24px' }}>
         {/* Header */}
         <header style={{ 
           display: 'flex', 
@@ -506,7 +506,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Recent Products - 40 + Show More */}
+        {/* Recent Products */}
         {allProducts.length > 0 && (
           <div>
             <div style={{ 
@@ -675,7 +675,6 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Show More Button */}
             {hasMore && (
               <div style={{
                 display: 'flex',

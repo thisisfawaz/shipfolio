@@ -16,6 +16,7 @@ export default function PublicProfile({ params }) {
   const [likeCounts, setLikeCounts] = useState({})
   const [currentUserId, setCurrentUserId] = useState(null)
   const [visibleCount, setVisibleCount] = useState(40)
+  const [showMedalPopup, setShowMedalPopup] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -105,13 +106,18 @@ export default function PublicProfile({ params }) {
   }
 
   const medalConfig = {
-    1: { name: 'Builder', description: 'Awarded after shipping 5 products' },
-    2: { name: 'Maker', description: 'Awarded after shipping 10 products' },
-    3: { name: 'Maverick', description: 'Awarded after shipping 20 products' },
-    4: { name: 'Architect', description: 'Awarded after shipping 35 products' },
-    5: { name: 'Pioneer', description: 'Awarded after shipping 50 products' },
-    6: { name: 'Visionary', description: 'Awarded after shipping 75 products' },
-    7: { name: 'Legend', description: 'Awarded after shipping 100 products' },
+    1: { name: 'Builder', icon: '🥉', productsRequired: 5, description: 'Awarded after shipping 5 products' },
+    2: { name: 'Maker', icon: '🥈', productsRequired: 10, description: 'Awarded after shipping 10 products' },
+    3: { name: 'Maverick', icon: '🥇', productsRequired: 20, description: 'Awarded after shipping 20 products' },
+    4: { name: 'Architect', icon: '💎', productsRequired: 35, description: 'Awarded after shipping 35 products' },
+    5: { name: 'Pioneer', icon: '👑', productsRequired: 50, description: 'Awarded after shipping 50 products' },
+    6: { name: 'Visionary', icon: '🌌', productsRequired: 75, description: 'Awarded after shipping 75 products' },
+    7: { name: 'Legend', icon: '🚀', productsRequired: 100, description: 'Awarded after shipping 100 products' },
+  }
+
+  const getCurrentMedal = () => {
+    if (!medals || medals.length === 0) return null
+    return medals[0]
   }
 
   const getStackColor = (stack) => {
@@ -232,6 +238,129 @@ export default function PublicProfile({ params }) {
 
   const productCount = allProducts.length
   const hasMore = displayedProducts.length < allProducts.length
+  const currentMedal = getCurrentMedal()
+
+  const MedalPopup = () => {
+    if (!showMedalPopup) return null
+
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.8)',
+          backdropFilter: 'blur(12px)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}
+        onClick={() => setShowMedalPopup(false)}
+      >
+        <div
+          style={{
+            background: '#111111',
+            borderRadius: '16px',
+            maxWidth: '500px',
+            width: '100%',
+            maxHeight: '80vh',
+            overflowY: 'auto',
+            padding: '32px',
+            border: '1px solid #222222',
+            position: 'relative'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => setShowMedalPopup(false)}
+            style={{
+              position: 'absolute',
+              top: '12px',
+              right: '16px',
+              background: 'none',
+              border: 'none',
+              fontSize: '24px',
+              cursor: 'pointer',
+              color: '#666666',
+              transition: 'color 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#666666'}
+          >
+            ✕
+          </button>
+
+          <h2 style={{
+            fontSize: '20px',
+            fontWeight: '600',
+            color: '#ffffff',
+            marginBottom: '20px',
+            letterSpacing: '-0.01em'
+          }}>
+            Builder Medals
+          </h2>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {Object.entries(medalConfig).map(([tier, config]) => {
+              const earned = medals.some(m => m.tier === parseInt(tier))
+              return (
+                <div
+                  key={tier}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '14px',
+                    padding: '12px 16px',
+                    borderRadius: '10px',
+                    background: earned ? '#1a1a1a' : 'transparent',
+                    border: earned ? '1px solid #2a2a3e' : '1px solid #1a1a1a',
+                    opacity: earned ? 1 : 0.4
+                  }}
+                >
+                  <span style={{ fontSize: '28px' }}>{config.icon}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      fontSize: '15px',
+                      fontWeight: '600',
+                      color: earned ? '#ffffff' : '#666666'
+                    }}>
+                      {config.name}
+                    </div>
+                    <div style={{
+                      fontSize: '12px',
+                      color: earned ? '#888888' : '#444444'
+                    }}>
+                      {config.description}
+                    </div>
+                  </div>
+                  {earned && (
+                    <span style={{
+                      fontSize: '12px',
+                      color: '#4ade80',
+                      background: '#1e3a1e',
+                      padding: '2px 10px',
+                      borderRadius: '12px'
+                    }}>
+                      Earned
+                    </span>
+                  )}
+                  {!earned && (
+                    <span style={{
+                      fontSize: '12px',
+                      color: '#666666'
+                    }}>
+                      {config.productsRequired} products
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{
@@ -341,20 +470,21 @@ export default function PublicProfile({ params }) {
             marginBottom: '14px'
           }} />
 
-          {profile.stacks && profile.stacks.length > 0 && (
+          {/* ===== STACKS ===== */}
+          <div style={{
+            width: '100%',
+            marginBottom: '14px'
+          }}>
             <div style={{
-              width: '100%',
-              marginBottom: '14px'
+              fontSize: '10px',
+              color: '#666666',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              marginBottom: '8px'
             }}>
-              <div style={{
-                fontSize: '10px',
-                color: '#666666',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                marginBottom: '8px'
-              }}>
-                Stacks
-              </div>
+              STACKS
+            </div>
+            {profile.stacks && profile.stacks.length > 0 ? (
               <div style={{
                 display: 'flex',
                 flexWrap: 'wrap',
@@ -380,8 +510,10 @@ export default function PublicProfile({ params }) {
                   )
                 })}
               </div>
-            </div>
-          )}
+            ) : (
+              <p style={{ fontSize: '12px', color: '#444444' }}>No stacks added</p>
+            )}
+          </div>
 
           <div style={{
             width: '100%',
@@ -390,127 +522,147 @@ export default function PublicProfile({ params }) {
             marginBottom: '14px'
           }} />
 
+          {/* ===== LINKS ===== */}
           <div style={{
-            display: 'flex',
-            gap: '12px',
-            flexWrap: 'wrap',
-            width: '100%'
+            width: '100%',
+            marginBottom: '14px'
           }}>
-            {profile.website && (
-              <a 
-                href={getValidUrl(profile.website)} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                style={{
-                  color: '#888888',
-                  textDecoration: 'none',
-                  fontSize: '11px',
-                  transition: 'color 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}
-              >
-                🌐 Website
-              </a>
-            )}
-            {profile.github_url && (
-              <a 
-                href={getValidUrl(profile.github_url)} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                style={{
-                  color: '#888888',
-                  textDecoration: 'none',
-                  fontSize: '11px',
-                  transition: 'color 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}
-              >
-                🐙 GitHub
-              </a>
-            )}
-            {profile.twitter_url && (
-              <a 
-                href={getValidUrl(profile.twitter_url)} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                style={{
-                  color: '#888888',
-                  textDecoration: 'none',
-                  fontSize: '11px',
-                  transition: 'color 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}
-              >
-                🐦 Twitter
-              </a>
-            )}
-            {profile.linkedin_url && (
-              <a 
-                href={getValidUrl(profile.linkedin_url)} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                style={{
-                  color: '#888888',
-                  textDecoration: 'none',
-                  fontSize: '11px',
-                  transition: 'color 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}
-              >
-                💼 LinkedIn
-              </a>
-            )}
-          </div>
-
-          {medals.length > 0 && (
             <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '5px',
-              marginTop: '16px',
-              paddingTop: '14px',
-              borderTop: '1px solid #2a2a3e',
-              width: '100%'
+              fontSize: '10px',
+              color: '#666666',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              marginBottom: '8px'
             }}>
-              {medals.slice(0, 3).map((medal) => {
-                const config = medalConfig[medal.tier]
-                return (
-                  <div
-                    key={medal.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '3px',
-                      background: '#111111',
-                      padding: '2px 8px 2px 5px',
-                      borderRadius: '20px',
-                      border: '1px solid #222222',
-                      cursor: 'help',
-                      fontSize: '11px',
-                      color: '#888888'
-                    }}
-                    title={`${config?.name || medal.name}\n${config?.description || ''}\nEarned: ${new Date(medal.awarded_at).toLocaleDateString()}`}
-                  >
-                    <span style={{ fontSize: '12px' }}>{medal.icon}</span>
-                    <span>{config?.name || medal.name}</span>
-                  </div>
-                )
-              })}
-              {medals.length > 3 && (
-                <div style={{
-                  fontSize: '11px',
-                  color: '#666666',
-                  padding: '2px 4px'
-                }}>
-                  +{medals.length - 3}
-                </div>
+              LINKS
+            </div>
+            <div style={{
+              display: 'inline-flex',
+              gap: '12px',
+              flexWrap: 'wrap',
+            }}>
+              {profile.website && (
+                <a 
+                  href={getValidUrl(profile.website)} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{
+                    color: '#888888',
+                    textDecoration: 'none',
+                    fontSize: '11px',
+                    transition: 'color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}
+                >
+                  🌐 Website
+                </a>
+              )}
+              {profile.github_url && (
+                <a 
+                  href={getValidUrl(profile.github_url)} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{
+                    color: '#888888',
+                    textDecoration: 'none',
+                    fontSize: '11px',
+                    transition: 'color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}
+                >
+                  🐙 GitHub
+                </a>
+              )}
+              {profile.twitter_url && (
+                <a 
+                  href={getValidUrl(profile.twitter_url)} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{
+                    color: '#888888',
+                    textDecoration: 'none',
+                    fontSize: '11px',
+                    transition: 'color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}
+                >
+                  🐦 Twitter
+                </a>
+              )}
+              {profile.linkedin_url && (
+                <a 
+                  href={getValidUrl(profile.linkedin_url)} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{
+                    color: '#888888',
+                    textDecoration: 'none',
+                    fontSize: '11px',
+                    transition: 'color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}
+                >
+                  💼 LinkedIn
+                </a>
               )}
             </div>
-          )}
+          </div>
+
+          <div style={{
+            width: '100%',
+            height: '1px',
+            background: '#2a2a2a',
+            marginBottom: '14px'
+          }} />
+
+          {/* ===== BUILDER MEDALS ===== */}
+          <div style={{
+            width: '100%'
+          }}>
+            <div style={{
+              fontSize: '10px',
+              color: '#666666',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              marginBottom: '8px'
+            }}>
+              BUILDER MEDALS
+            </div>
+            {currentMedal ? (
+              <div
+                onClick={() => setShowMedalPopup(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '6px 14px 6px 10px',
+                  background: '#1a1a1a',
+                  borderRadius: '20px',
+                  border: '1px solid #2a2a3e',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#6366f1'
+                  e.currentTarget.style.background = '#222222'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#2a2a3e'
+                  e.currentTarget.style.background = '#1a1a1a'
+                }}
+              >
+                <span style={{ fontSize: '20px' }}>{currentMedal.icon}</span>
+                <span style={{ fontSize: '13px', color: '#ffffff' }}>{currentMedal.name}</span>
+                <span style={{ fontSize: '11px', color: '#666666' }}>›</span>
+              </div>
+            ) : (
+              <p style={{ fontSize: '12px', color: '#444444' }}>No medals earned yet</p>
+            )}
+          </div>
         </div>
 
         {/* ===== RIGHT COLUMN - PRODUCTS (SCROLLABLE) ===== */}
@@ -544,7 +696,7 @@ export default function PublicProfile({ params }) {
               <div className="product-grid" style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(4, 1fr)',
-                gap: '12px'
+                gap: '16px'
               }}>
                 {displayedProducts.map((product) => {
                   const categoryColor = product.categories?.color || '#6366f1'
@@ -698,7 +850,6 @@ export default function PublicProfile({ params }) {
                 })}
               </div>
 
-              {/* ===== SHOW MORE BUTTON ===== */}
               {hasMore && (
                 <div style={{
                   display: 'flex',
@@ -742,6 +893,9 @@ export default function PublicProfile({ params }) {
         />
       )}
 
+      {showMedalPopup && <MedalPopup />}
+
+      {/* ===== RESPONSIVE ===== */}
       <style>{`
         @media (max-width: 1200px) {
           .product-grid {
@@ -777,6 +931,10 @@ export default function PublicProfile({ params }) {
             align-items: center !important;
             text-align: center !important;
           }
+          /* Center links on mobile */
+          .profile-left .links-container {
+            justify-content: center !important;
+          }
           .products-right {
             padding-left: 0 !important;
             max-height: none !important;
@@ -784,12 +942,14 @@ export default function PublicProfile({ params }) {
           }
           .product-grid {
             grid-template-columns: 1fr !important;
+            gap: 20px !important;
           }
         }
 
         @media (max-width: 480px) {
           .product-grid {
             grid-template-columns: 1fr !important;
+            gap: 20px !important;
           }
         }
       `}</style>
