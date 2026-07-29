@@ -122,22 +122,26 @@ export default function PublicProfile({ params }) {
 
   const getStackColor = (stack) => {
     const colors = {
-      'React': '#61dafb', 'Next.js': '#000000', 'TypeScript': '#3178c6',
+      'React': '#61dafb', 'Next.js': '#770c72', 'TypeScript': '#3178c6',
       'JavaScript': '#f7df1e', 'Python': '#3776ab', 'Ruby': '#cc342d',
       'Go': '#00add8', 'Rust': '#dea584', 'Swift': '#fa7343',
       'Kotlin': '#7f52ff', 'Java': '#007396', 'C++': '#00599c',
       'C#': '#239120', 'PHP': '#777bb4', 'HTML': '#e34f26',
       'CSS': '#1572b6', 'Sass': '#cc6699', 'Tailwind': '#06b6d4',
       'Bootstrap': '#7952b3', 'Vue': '#4fc08d', 'Angular': '#dd0031',
-      'Svelte': '#ff3e00', 'Node.js': '#339933', 'Express': '#000000',
-      'Django': '#092e20', 'Flask': '#000000', 'FastAPI': '#009688',
+      'Svelte': '#ff3e00', 'Node.js': '#339933', 'Express': '#42cbbd',
+      'Django': '#79c2a6', 'Flask': '#625cc4', 'FastAPI': '#009688',
       'GraphQL': '#e10098', 'MongoDB': '#47a248', 'PostgreSQL': '#336791',
       'MySQL': '#4479a1', 'Redis': '#dc382d', 'AWS': '#ff9900',
       'Docker': '#2496ed', 'Kubernetes': '#326ce5', 'Figma': '#f24e1e',
       'Framer': '#0055ff', 'Webflow': '#4353ff', 'WordPress': '#21759b',
       'Shopify': '#7ab55c', 'AI': '#00bcd4', 'Machine Learning': '#ff6f00',
       'Data Science': '#4caf50', 'DevOps': '#e91e63', 'Security': '#f44336',
-      'Blockchain': '#3d7bf7',
+      'Blockchain': '#3d7bf7', 'Solidity': '#363636', 'Elixir': '#4e2a8e',
+      'Laravel': '#ff2d20', 'Spring Boot': '#6db33f', 'Flutter': '#02569b',
+      'React Native': '#61dafb', 'Unity': '#341111', 'Unreal Engine': '#295410',
+      'Three.js': '#2b9727', 'D3.js': '#f9a03c', 'Redux': '#764abc',
+      'Firebase': '#ffca28', 'Supabase': '#3ecf8e', 'OpenAI': '#10a37f',
     }
     for (const [key, color] of Object.entries(colors)) {
       if (stack.includes(key)) return color
