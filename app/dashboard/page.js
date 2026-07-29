@@ -9,6 +9,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState('grid')
+  const [visibleCount, setVisibleCount] = useState(40)
   const supabase = createClient()
 
   const [stats, setStats] = useState({
@@ -18,7 +19,8 @@ export default function DashboardPage() {
     currentMedal: '🏅',
     medalName: 'No medals yet',
   })
-  const [recentProducts, setRecentProducts] = useState([])
+  const [allProducts, setAllProducts] = useState([])
+  const [displayedProducts, setDisplayedProducts] = useState([])
 
   useEffect(() => {
     const getUser = async () => {
@@ -55,7 +57,8 @@ export default function DashboardPage() {
           medalName: topMedal?.name || 'No medals yet',
         })
 
-        setRecentProducts(products?.slice(0, 6) || [])
+        setAllProducts(products || [])
+        setDisplayedProducts(products?.slice(0, 40) || [])
       } catch (error) {
         console.error(error)
       }
@@ -64,6 +67,12 @@ export default function DashboardPage() {
     }
     getUser()
   }, [])
+
+  const handleShowMore = () => {
+    const nextCount = visibleCount + 40
+    setDisplayedProducts(allProducts.slice(0, nextCount))
+    setVisibleCount(nextCount)
+  }
 
   if (loading) {
     return (
@@ -82,6 +91,7 @@ export default function DashboardPage() {
   }
 
   const profileUrl = `/${user?.user_metadata?.username || 'profile'}`
+  const hasMore = displayedProducts.length < allProducts.length
 
   const Icons = {
     Package: () => (
@@ -496,8 +506,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Recent Products */}
-        {recentProducts.length > 0 && (
+        {/* Recent Products - 40 + Show More */}
+        {allProducts.length > 0 && (
           <div>
             <div style={{ 
               display: 'flex', 
@@ -559,7 +569,7 @@ export default function DashboardPage() {
                 gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
                 gap: '16px'
               }}>
-                {recentProducts.map((product) => {
+                {displayedProducts.map((product) => {
                   const categoryColor = product.categories?.color || '#6366f1'
                   const categoryName = product.categories?.name || 'Uncategorized'
                   
@@ -609,7 +619,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {recentProducts.map((product) => {
+                {displayedProducts.map((product) => {
                   const categoryColor = product.categories?.color || '#6366f1'
                   const categoryName = product.categories?.name || 'Uncategorized'
                   
@@ -662,6 +672,39 @@ export default function DashboardPage() {
                     </Link>
                   )
                 })}
+              </div>
+            )}
+
+            {/* Show More Button */}
+            {hasMore && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                marginTop: '24px'
+              }}>
+                <button
+                  onClick={handleShowMore}
+                  style={{
+                    padding: '8px 24px',
+                    background: 'transparent',
+                    border: '1px solid #333333',
+                    borderRadius: '20px',
+                    color: '#888888',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#6366f1'
+                    e.currentTarget.style.color = '#ffffff'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#333333'
+                    e.currentTarget.style.color = '#888888'
+                  }}
+                >
+                  Show More
+                </button>
               </div>
             )}
           </div>

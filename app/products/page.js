@@ -7,10 +7,12 @@ import Sidebar from '@/components/Sidebar'
 import { getValidUrl } from '@/lib/utils'
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState([])
+  const [allProducts, setAllProducts] = useState([])
+  const [displayedProducts, setDisplayedProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState('grid')
+  const [visibleCount, setVisibleCount] = useState(40)
   const supabase = createClient()
 
   useEffect(() => {
@@ -24,7 +26,10 @@ export default function ProductsPage() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
-      if (data) setProducts(data)
+      if (data) {
+        setAllProducts(data)
+        setDisplayedProducts(data.slice(0, 40))
+      }
       setLoading(false)
     }
     fetchProducts()
@@ -39,7 +44,8 @@ export default function ProductsPage() {
       .eq('id', id)
 
     if (!error) {
-      setProducts(products.filter(p => p.id !== id))
+      setAllProducts(allProducts.filter(p => p.id !== id))
+      setDisplayedProducts(displayedProducts.filter(p => p.id !== id))
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         await fetch('/api/medals', {
@@ -51,11 +57,25 @@ export default function ProductsPage() {
     }
   }
 
-  const filteredProducts = products.filter(p => {
+  const handleShowMore = () => {
+    const nextCount = visibleCount + 40
+    setDisplayedProducts(allProducts.slice(0, nextCount))
+    setVisibleCount(nextCount)
+  }
+
+  const filteredProducts = allProducts.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
                           p.description?.toLowerCase().includes(search.toLowerCase())
     return matchesSearch
   })
+
+  const filteredDisplayed = displayedProducts.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
+                          p.description?.toLowerCase().includes(search.toLowerCase())
+    return matchesSearch
+  })
+
+  const hasMore = visibleCount < allProducts.length && filteredProducts.length > displayedProducts.length
 
   if (loading) {
     return (
@@ -286,283 +306,347 @@ export default function ProductsPage() {
             )}
           </div>
         ) : viewMode === 'grid' ? (
-          // GRID VIEW
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: '16px'
-          }}>
-            {filteredProducts.map((product) => {
-              const categoryColor = product.categories?.color || '#6366f1'
-              const categoryName = product.categories?.name || 'Uncategorized'
-              
-              return (
-                <div
-                  key={product.id}
-                  style={{
-                    background: '#14141e',
-                    border: '1px solid #2a2a3e',
-                    borderRadius: '14px',
-                    overflow: 'hidden',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.transform = 'translateY(-4px)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#2a2a3e'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                >
-                  {product.thumbnail_url && (
-                    <img 
-                      src={product.thumbnail_url} 
-                      alt={product.name}
-                      style={{ width: '100%', height: '160px', objectFit: 'cover' }}
-                    />
-                  )}
-                  <div style={{ padding: '16px' }}>
-                    <Link 
-                      href={`/products/${product.id}`}
-                      style={{
-                        color: '#f1f1f1',
-                        textDecoration: 'none',
-                        fontWeight: '600',
-                        fontSize: '16px',
-                        display: 'block',
-                        marginBottom: '4px',
-                        transition: 'color 0.2s'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.color = '#6366f1'}
-                      onMouseLeave={(e) => e.currentTarget.style.color = '#f1f1f1'}
-                    >
-                      {product.name}
-                    </Link>
-                    <p style={{ fontSize: '14px', color: '#a1a1b9', margin: '0 0 8px' }}>
-                      {product.description?.slice(0, 60)}...
-                    </p>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                      <span style={{
-                        fontSize: '12px',
-                        padding: '2px 10px',
-                        borderRadius: '12px',
-                        background: `${categoryColor}22`,
-                        color: categoryColor,
-                        border: `1px solid ${categoryColor}44`
-                      }}>
-                        {categoryName}
-                      </span>
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        {product.website_url && (
-                          <a 
-                            href={getValidUrl(product.website_url)} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
+          <>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '16px'
+            }}>
+              {filteredDisplayed.map((product) => {
+                const categoryColor = product.categories?.color || '#6366f1'
+                const categoryName = product.categories?.name || 'Uncategorized'
+                
+                return (
+                  <div
+                    key={product.id}
+                    style={{
+                      background: '#14141e',
+                      border: '1px solid #2a2a3e',
+                      borderRadius: '14px',
+                      overflow: 'hidden',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.transform = 'translateY(-4px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#2a2a3e'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                  >
+                    {product.thumbnail_url && (
+                      <img 
+                        src={product.thumbnail_url} 
+                        alt={product.name}
+                        style={{ width: '100%', height: '160px', objectFit: 'cover' }}
+                      />
+                    )}
+                    <div style={{ padding: '16px' }}>
+                      <Link 
+                        href={`/products/${product.id}`}
+                        style={{
+                          color: '#f1f1f1',
+                          textDecoration: 'none',
+                          fontWeight: '600',
+                          fontSize: '16px',
+                          display: 'block',
+                          marginBottom: '4px',
+                          transition: 'color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = '#6366f1'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = '#f1f1f1'}
+                      >
+                        {product.name}
+                      </Link>
+                      <p style={{ fontSize: '14px', color: '#a1a1b9', margin: '0 0 8px' }}>
+                        {product.description?.slice(0, 60)}...
+                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                        <span style={{
+                          fontSize: '12px',
+                          padding: '2px 10px',
+                          borderRadius: '12px',
+                          background: `${categoryColor}22`,
+                          color: categoryColor,
+                          border: `1px solid ${categoryColor}44`
+                        }}>
+                          {categoryName}
+                        </span>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          {product.website_url && (
+                            <a 
+                              href={getValidUrl(product.website_url)} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              style={{
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                color: '#a1a1b9',
+                                transition: 'all 0.2s',
+                                display: 'flex',
+                                alignItems: 'center'
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.color = '#f1f1f1'; e.currentTarget.style.background = '#1c1c2e'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.color = '#a1a1b9'; e.currentTarget.style.background = 'transparent'; }}
+                            >
+                              <Icons.External />
+                            </a>
+                          )}
+                          <Link
+                            href={`/products/${product.id}/edit`}
                             style={{
                               padding: '4px 8px',
                               borderRadius: '6px',
                               color: '#a1a1b9',
                               transition: 'all 0.2s',
                               display: 'flex',
-                              alignItems: 'center'
+                              alignItems: 'center',
+                              textDecoration: 'none'
                             }}
                             onMouseEnter={(e) => { e.currentTarget.style.color = '#f1f1f1'; e.currentTarget.style.background = '#1c1c2e'; }}
                             onMouseLeave={(e) => { e.currentTarget.style.color = '#a1a1b9'; e.currentTarget.style.background = 'transparent'; }}
                           >
-                            <Icons.External />
-                          </a>
+                            <Icons.Edit />
+                          </Link>
+                          <button
+                            onClick={() => handleDelete(product.id)}
+                            style={{
+                              padding: '4px 8px',
+                              borderRadius: '6px',
+                              color: '#a1a1b9',
+                              transition: 'all 0.2s',
+                              display: 'flex',
+                              alignItems: 'center',
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer'
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#1c1c2e'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = '#a1a1b9'; e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            <Icons.Trash />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            {hasMore && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                marginTop: '24px'
+              }}>
+                <button
+                  onClick={handleShowMore}
+                  style={{
+                    padding: '8px 24px',
+                    background: 'transparent',
+                    border: '1px solid #333333',
+                    borderRadius: '20px',
+                    color: '#888888',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#6366f1'
+                    e.currentTarget.style.color = '#ffffff'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#333333'
+                    e.currentTarget.style.color = '#888888'
+                  }}
+                >
+                  Show More
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {filteredDisplayed.map((product) => {
+                const categoryColor = product.categories?.color || '#6366f1'
+                const categoryName = product.categories?.name || 'Uncategorized'
+                
+                return (
+                  <div
+                    key={product.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '16px',
+                      background: '#14141e',
+                      border: '1px solid #2a2a3e',
+                      borderRadius: '12px',
+                      padding: '12px 16px',
+                      transition: 'all 0.2s',
+                      flexWrap: 'wrap'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.borderColor = '#6366f1'}
+                    onMouseLeave={(e) => e.currentTarget.style.borderColor = '#2a2a3e'}
+                  >
+                    {product.thumbnail_url ? (
+                      <img 
+                        src={product.thumbnail_url} 
+                        alt={product.name}
+                        style={{ 
+                          width: '48px', 
+                          height: '48px', 
+                          objectFit: 'cover', 
+                          borderRadius: '8px',
+                          flexShrink: 0
+                        }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '8px',
+                        background: '#0a0a0f',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#a1a1b9',
+                        fontSize: '20px',
+                        flexShrink: 0
+                      }}>
+                        📦
+                      </div>
+                    )}
+
+                    <div style={{ flex: 1, minWidth: '120px' }}>
+                      <Link 
+                        href={`/products/${product.id}`}
+                        style={{
+                          color: '#f1f1f1',
+                          textDecoration: 'none',
+                          fontWeight: '600',
+                          fontSize: '15px',
+                          transition: 'color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = '#6366f1'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = '#f1f1f1'}
+                      >
+                        {product.name}
+                      </Link>
+                      <div style={{ 
+                        display: 'flex', 
+                        gap: '8px', 
+                        alignItems: 'center',
+                        marginTop: '2px',
+                        flexWrap: 'wrap'
+                      }}>
+                        <span style={{ 
+                          fontSize: '12px', 
+                          padding: '2px 10px', 
+                          borderRadius: '12px',
+                          background: `${categoryColor}22`,
+                          color: categoryColor,
+                          border: `1px solid ${categoryColor}44`
+                        }}>
+                          {categoryName}
+                        </span>
+                        {product.tags && product.tags.length > 0 && (
+                          <span style={{ fontSize: '13px', color: '#a1a1b9' }}>
+                            {product.tags.join(', ')}
+                          </span>
                         )}
-                        <Link
-                          href={`/products/${product.id}/edit`}
+                        <span style={{ fontSize: '13px', color: '#a1a1b9' }}>
+                          {new Date(product.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                      {product.website_url && (
+                        <a 
+                          href={getValidUrl(product.website_url)} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
                           style={{
-                            padding: '4px 8px',
+                            padding: '6px 10px',
                             borderRadius: '6px',
                             color: '#a1a1b9',
                             transition: 'all 0.2s',
                             display: 'flex',
-                            alignItems: 'center',
-                            textDecoration: 'none'
+                            alignItems: 'center'
                           }}
                           onMouseEnter={(e) => { e.currentTarget.style.color = '#f1f1f1'; e.currentTarget.style.background = '#1c1c2e'; }}
                           onMouseLeave={(e) => { e.currentTarget.style.color = '#a1a1b9'; e.currentTarget.style.background = 'transparent'; }}
                         >
-                          <Icons.Edit />
-                        </Link>
-                        <button
-                          onClick={() => handleDelete(product.id)}
-                          style={{
-                            padding: '4px 8px',
-                            borderRadius: '6px',
-                            color: '#a1a1b9',
-                            transition: 'all 0.2s',
-                            display: 'flex',
-                            alignItems: 'center',
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer'
-                          }}
-                          onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#1c1c2e'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.color = '#a1a1b9'; e.currentTarget.style.background = 'transparent'; }}
-                        >
-                          <Icons.Trash />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        ) : (
-          // LIST VIEW
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {filteredProducts.map((product) => {
-              const categoryColor = product.categories?.color || '#6366f1'
-              const categoryName = product.categories?.name || 'Uncategorized'
-              
-              return (
-                <div
-                  key={product.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '16px',
-                    background: '#14141e',
-                    border: '1px solid #2a2a3e',
-                    borderRadius: '12px',
-                    padding: '12px 16px',
-                    transition: 'all 0.2s',
-                    flexWrap: 'wrap'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.borderColor = '#6366f1'}
-                  onMouseLeave={(e) => e.currentTarget.style.borderColor = '#2a2a3e'}
-                >
-                  {product.thumbnail_url ? (
-                    <img 
-                      src={product.thumbnail_url} 
-                      alt={product.name}
-                      style={{ 
-                        width: '48px', 
-                        height: '48px', 
-                        objectFit: 'cover', 
-                        borderRadius: '8px',
-                        flexShrink: 0
-                      }}
-                    />
-                  ) : (
-                    <div style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '8px',
-                      background: '#0a0a0f',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#a1a1b9',
-                      fontSize: '20px',
-                      flexShrink: 0
-                    }}>
-                      📦
-                    </div>
-                  )}
-
-                  <div style={{ flex: 1, minWidth: '120px' }}>
-                    <Link 
-                      href={`/products/${product.id}`}
-                      style={{
-                        color: '#f1f1f1',
-                        textDecoration: 'none',
-                        fontWeight: '600',
-                        fontSize: '15px',
-                        transition: 'color 0.2s'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.color = '#6366f1'}
-                      onMouseLeave={(e) => e.currentTarget.style.color = '#f1f1f1'}
-                    >
-                      {product.name}
-                    </Link>
-                    <div style={{ 
-                      display: 'flex', 
-                      gap: '8px', 
-                      alignItems: 'center',
-                      marginTop: '2px',
-                      flexWrap: 'wrap'
-                    }}>
-                      <span style={{ 
-                        fontSize: '12px', 
-                        padding: '2px 10px', 
-                        borderRadius: '12px',
-                        background: `${categoryColor}22`,
-                        color: categoryColor,
-                        border: `1px solid ${categoryColor}44`
-                      }}>
-                        {categoryName}
-                      </span>
-                      {product.tags && product.tags.length > 0 && (
-                        <span style={{ fontSize: '13px', color: '#a1a1b9' }}>
-                          {product.tags.join(', ')}
-                        </span>
+                          <Icons.External />
+                        </a>
                       )}
-                      <span style={{ fontSize: '13px', color: '#a1a1b9' }}>
-                        {new Date(product.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                    {product.website_url && (
-                      <a 
-                        href={getValidUrl(product.website_url)} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
+                      <Link
+                        href={`/products/${product.id}/edit`}
                         style={{
                           padding: '6px 10px',
                           borderRadius: '6px',
                           color: '#a1a1b9',
                           transition: 'all 0.2s',
                           display: 'flex',
-                          alignItems: 'center'
+                          alignItems: 'center',
+                          textDecoration: 'none'
                         }}
                         onMouseEnter={(e) => { e.currentTarget.style.color = '#f1f1f1'; e.currentTarget.style.background = '#1c1c2e'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.color = '#a1a1b9'; e.currentTarget.style.background = 'transparent'; }}
                       >
-                        <Icons.External />
-                      </a>
-                    )}
-                    <Link
-                      href={`/products/${product.id}/edit`}
-                      style={{
-                        padding: '6px 10px',
-                        borderRadius: '6px',
-                        color: '#a1a1b9',
-                        transition: 'all 0.2s',
-                        display: 'flex',
-                        alignItems: 'center',
-                        textDecoration: 'none'
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.color = '#f1f1f1'; e.currentTarget.style.background = '#1c1c2e'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.color = '#a1a1b9'; e.currentTarget.style.background = 'transparent'; }}
-                    >
-                      <Icons.Edit />
-                    </Link>
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      style={{
-                        padding: '6px 10px',
-                        borderRadius: '6px',
-                        color: '#a1a1b9',
-                        transition: 'all 0.2s',
-                        display: 'flex',
-                        alignItems: 'center',
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer'
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#1c1c2e'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.color = '#a1a1b9'; e.currentTarget.style.background = 'transparent'; }}
-                    >
-                      <Icons.Trash />
-                    </button>
+                        <Icons.Edit />
+                      </Link>
+                      <button
+                        onClick={() => handleDelete(product.id)}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: '6px',
+                          color: '#a1a1b9',
+                          transition: 'all 0.2s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#1c1c2e'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = '#a1a1b9'; e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <Icons.Trash />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+            {hasMore && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                marginTop: '24px'
+              }}>
+                <button
+                  onClick={handleShowMore}
+                  style={{
+                    padding: '8px 24px',
+                    background: 'transparent',
+                    border: '1px solid #333333',
+                    borderRadius: '20px',
+                    color: '#888888',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#6366f1'
+                    e.currentTarget.style.color = '#ffffff'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#333333'
+                    e.currentTarget.style.color = '#888888'
+                  }}
+                >
+                  Show More
+                </button>
+              </div>
+            )}
+          </>
         )}
 
         {/* Count */}
@@ -573,7 +657,7 @@ export default function ProductsPage() {
             fontSize: '14px',
             textAlign: 'center'
           }}>
-            Showing {filteredProducts.length} of {products.length} products
+            Showing {Math.min(filteredDisplayed.length, filteredProducts.length)} of {filteredProducts.length} products
           </div>
         )}
       </div>

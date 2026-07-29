@@ -3,16 +3,19 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
+import { getValidUrl } from '@/lib/utils'
 
 export default function PublicProfile({ params }) {
   const [profile, setProfile] = useState(null)
-  const [products, setProducts] = useState([])
+  const [allProducts, setAllProducts] = useState([])
+  const [displayedProducts, setDisplayedProducts] = useState([])
   const [medals, setMedals] = useState([])
   const [loading, setLoading] = useState(true)
-  const [isDark, setIsDark] = useState(true)
   const [selectedProduct, setSelectedProduct] = useState(null)
-  const [viewMode, setViewMode] = useState('grid')
+  const [likedProducts, setLikedProducts] = useState({})
+  const [likeCounts, setLikeCounts] = useState({})
+  const [currentUserId, setCurrentUserId] = useState(null)
+  const [visibleCount, setVisibleCount] = useState(40)
   const supabase = createClient()
 
   useEffect(() => {
@@ -23,6 +26,9 @@ export default function PublicProfile({ params }) {
         setLoading(false)
         return
       }
+
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) setCurrentUserId(user.id)
 
       const { data: profileData, error } = await supabase
         .from('profiles')
@@ -45,7 +51,38 @@ export default function PublicProfile({ params }) {
         .eq('is_published', true)
         .order('created_at', { ascending: false })
 
-      setProducts(productsData || [])
+      setAllProducts(productsData || [])
+      setDisplayedProducts(productsData?.slice(0, 40) || [])
+
+      if (productsData && productsData.length > 0) {
+        const productIds = productsData.map(p => p.id)
+        
+        const { data: likesData } = await supabase
+          .from('product_likes')
+          .select('product_id')
+          .in('product_id', productIds)
+
+        const counts = {}
+        const userLikes = {}
+        likesData?.forEach(like => {
+          counts[like.product_id] = (counts[like.product_id] || 0) + 1
+        })
+
+        if (user) {
+          const { data: userLikesData } = await supabase
+            .from('product_likes')
+            .select('product_id')
+            .in('product_id', productIds)
+            .eq('user_id', user.id)
+
+          userLikesData?.forEach(like => {
+            userLikes[like.product_id] = true
+          })
+        }
+
+        setLikeCounts(counts)
+        setLikedProducts(userLikes)
+      }
 
       const { data: medalsData } = await supabase
         .from('medals')
@@ -61,13 +98,11 @@ export default function PublicProfile({ params }) {
     fetchProfile()
   }, [params])
 
-  useEffect(() => {
-    if (isDark) {
-      document.body.classList.remove('light')
-    } else {
-      document.body.classList.add('light')
-    }
-  }, [isDark])
+  const handleShowMore = () => {
+    const nextCount = visibleCount + 40
+    setDisplayedProducts(allProducts.slice(0, nextCount))
+    setVisibleCount(nextCount)
+  }
 
   const medalConfig = {
     1: { name: 'Builder', description: 'Awarded after shipping 5 products' },
@@ -79,25 +114,101 @@ export default function PublicProfile({ params }) {
     7: { name: 'Legend', description: 'Awarded after shipping 100 products' },
   }
 
-  const Icons = {
-    Grid: () => (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-        <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor"/>
-        <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor"/>
-        <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor"/>
-        <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor"/>
-      </svg>
-    ),
-    List: () => (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-        <line x1="8" y1="6" x2="21" y2="6" stroke="currentColor"/>
-        <line x1="8" y1="12" x2="21" y2="12" stroke="currentColor"/>
-        <line x1="8" y1="18" x2="21" y2="18" stroke="currentColor"/>
-        <line x1="3" y1="6" x2="3.01" y2="6" stroke="currentColor"/>
-        <line x1="3" y1="12" x2="3.01" y2="12" stroke="currentColor"/>
-        <line x1="3" y1="18" x2="3.01" y2="18" stroke="currentColor"/>
-      </svg>
-    ),
+  const getStackColor = (stack) => {
+    const colors = {
+      'React': '#61dafb', 'Next.js': '#000000', 'TypeScript': '#3178c6',
+      'JavaScript': '#f7df1e', 'Python': '#3776ab', 'Ruby': '#cc342d',
+      'Go': '#00add8', 'Rust': '#dea584', 'Swift': '#fa7343',
+      'Kotlin': '#7f52ff', 'Java': '#007396', 'C++': '#00599c',
+      'C#': '#239120', 'PHP': '#777bb4', 'HTML': '#e34f26',
+      'CSS': '#1572b6', 'Sass': '#cc6699', 'Tailwind': '#06b6d4',
+      'Bootstrap': '#7952b3', 'Vue': '#4fc08d', 'Angular': '#dd0031',
+      'Svelte': '#ff3e00', 'Node.js': '#339933', 'Express': '#000000',
+      'Django': '#092e20', 'Flask': '#000000', 'FastAPI': '#009688',
+      'GraphQL': '#e10098', 'MongoDB': '#47a248', 'PostgreSQL': '#336791',
+      'MySQL': '#4479a1', 'Redis': '#dc382d', 'AWS': '#ff9900',
+      'Docker': '#2496ed', 'Kubernetes': '#326ce5', 'Figma': '#f24e1e',
+      'Framer': '#0055ff', 'Webflow': '#4353ff', 'WordPress': '#21759b',
+      'Shopify': '#7ab55c', 'AI': '#00bcd4', 'Machine Learning': '#ff6f00',
+      'Data Science': '#4caf50', 'DevOps': '#e91e63', 'Security': '#f44336',
+      'Blockchain': '#3d7bf7',
+    }
+    for (const [key, color] of Object.entries(colors)) {
+      if (stack.includes(key)) return color
+    }
+    let hash = 0
+    for (let i = 0; i < stack.length; i++) {
+      hash = stack.charCodeAt(i) + ((hash << 5) - hash)
+    }
+    const hue = Math.abs(hash % 360)
+    return `hsl(${hue}, 70%, 55%)`
+  }
+
+  const handleLike = async (e, productId) => {
+    e.stopPropagation()
+
+    if (!currentUserId) {
+      window.location.href = '/login'
+      return
+    }
+
+    const isLiked = likedProducts[productId]
+
+    setLikedProducts(prev => ({
+      ...prev,
+      [productId]: !isLiked
+    }))
+    setLikeCounts(prev => ({
+      ...prev,
+      [productId]: (prev[productId] || 0) + (isLiked ? -1 : 1)
+    }))
+
+    if (isLiked) {
+      const { error } = await supabase
+        .from('product_likes')
+        .delete()
+        .eq('product_id', productId)
+        .eq('user_id', currentUserId)
+
+      if (error) {
+        setLikedProducts(prev => ({ ...prev, [productId]: true }))
+        setLikeCounts(prev => ({
+          ...prev,
+          [productId]: (prev[productId] || 0) + 1
+        }))
+        console.error('Error unliking:', error)
+      }
+    } else {
+      const { error } = await supabase
+        .from('product_likes')
+        .insert({
+          product_id: productId,
+          user_id: currentUserId,
+        })
+
+      if (error) {
+        setLikedProducts(prev => ({ ...prev, [productId]: false }))
+        setLikeCounts(prev => ({
+          ...prev,
+          [productId]: (prev[productId] || 0) - 1
+        }))
+        console.error('Error liking:', error)
+      }
+    }
+  }
+
+  const formatCount = (num) => {
+    if (!num) return '0'
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'K'
+    }
+    return num.toString()
+  }
+
+  const truncateDescription = (text) => {
+    if (!text) return ''
+    if (text.length <= 35) return text
+    return text.slice(0, 35) + '...'
   }
 
   if (loading) {
@@ -107,8 +218,8 @@ export default function PublicProfile({ params }) {
         alignItems: 'center', 
         justifyContent: 'center', 
         minHeight: '100vh',
-        background: '#0a0a0f',
-        color: '#a1a1b9'
+        background: '#0a0a0a',
+        color: '#888888'
       }}>
         <p>Loading...</p>
       </div>
@@ -119,128 +230,253 @@ export default function PublicProfile({ params }) {
     notFound()
   }
 
-  const theme = {
-    bg: isDark ? '#0a0a0f' : '#f8fafc',
-    card: isDark ? '#14141e' : '#ffffff',
-    border: isDark ? '#2a2a3e' : '#e2e8f0',
-    text: isDark ? '#f1f1f1' : '#0f172a',
-    textSecondary: isDark ? '#a1a1b9' : '#475569',
-    primary: '#6366f1',
-    hover: isDark ? '#1c1c2e' : '#f1f5f9',
-  }
+  const productCount = allProducts.length
+  const hasMore = displayedProducts.length < allProducts.length
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      background: theme.bg, 
-      color: theme.text,
-      transition: 'background 0.3s, color 0.3s'
+    <div style={{
+      minHeight: '100vh',
+      background: '#0a0a0a',
+      color: '#ffffff',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+      WebkitFontSmoothing: 'antialiased',
+      padding: '40px 24px',
+      display: 'flex',
+      alignItems: 'flex-start'
     }}>
-      <div style={{ maxWidth: '960px', margin: '0 auto', padding: '48px 20px' }}>
+      <div className="container" style={{ 
+        maxWidth: '1600px', 
+        margin: '0 auto',
+        width: '100%',
+        display: 'flex',
+        alignItems: 'flex-start',
+        minHeight: 'calc(100vh - 80px)'
+      }}>
         
-        {/* Theme Toggle */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '32px' }}>
-          <button
-            onClick={() => setIsDark(!isDark)}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '20px',
-              border: `1px solid ${theme.border}`,
-              background: theme.card,
-              color: theme.text,
-              cursor: 'pointer',
-              fontSize: '14px',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            {isDark ? '☀️ Light' : '🌙 Dark'}
-          </button>
-        </div>
+        {/* ===== LEFT COLUMN - PROFILE (FIXED STATIC) ===== */}
+        <div className="profile-left" style={{
+          width: '280px',
+          flexShrink: 0,
+          position: 'sticky',
+          top: '40px',
+          height: 'calc(100vh - 80px)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          textAlign: 'left',
+          paddingRight: '24px',
+          borderRight: '1px solid #2a2a2a',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            width: '80px',
+            height: '80px',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            marginBottom: '14px',
+            border: '2px solid #333333',
+            background: '#1a1a1a',
+            flexShrink: 0
+          }}>
+            {profile.avatar_url ? (
+              <img 
+                src={profile.avatar_url} 
+                alt={profile.full_name || profile.username}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover'
+                }}
+              />
+            ) : (
+              <div style={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '32px',
+                color: '#ffffff'
+              }}>
+                {profile.full_name?.[0] || profile.username[0]}
+              </div>
+            )}
+          </div>
 
-        {/* Hero Section */}
-        <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-          {profile.avatar_url ? (
-            <img 
-              src={profile.avatar_url} 
-              alt={profile.full_name || profile.username}
-              style={{
-                width: '100px',
-                height: '100px',
-                borderRadius: '50%',
-                objectFit: 'cover',
-                marginBottom: '16px',
-                border: `3px solid ${theme.primary}`
-              }}
-            />
-          ) : (
-            <div style={{
-              width: '100px',
-              height: '100px',
-              borderRadius: '50%',
-              background: theme.primary,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '40px',
-              color: 'white',
-              margin: '0 auto 16px',
-              fontWeight: '600'
-            }}>
-              {profile.full_name?.[0] || profile.username[0]}
-            </div>
-          )}
-
-          <h1 style={{ fontSize: '36px', fontWeight: '700', marginBottom: '4px' }}>
+          <h1 style={{
+            fontSize: '20px',
+            fontWeight: '600',
+            color: '#ffffff',
+            marginBottom: '4px',
+            letterSpacing: '-0.01em'
+          }}>
             {profile.full_name || profile.username}
           </h1>
 
           {profile.role && (
-            <p style={{ fontSize: '18px', color: theme.textSecondary, marginBottom: '8px' }}>
+            <p style={{
+              fontSize: '13px',
+              color: '#888888',
+              marginBottom: '8px'
+            }}>
               {profile.role}
             </p>
           )}
 
           {profile.bio && (
-            <p style={{ color: theme.textSecondary, maxWidth: '600px', margin: '0 auto 16px' }}>
+            <p style={{
+              fontSize: '13px',
+              color: '#666666',
+              lineHeight: '1.5',
+              marginBottom: '16px'
+            }}>
               {profile.bio}
             </p>
           )}
 
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '16px' }}>
+          <div style={{
+            width: '100%',
+            height: '1px',
+            background: '#2a2a2a',
+            marginBottom: '14px'
+          }} />
+
+          {profile.stacks && profile.stacks.length > 0 && (
+            <div style={{
+              width: '100%',
+              marginBottom: '14px'
+            }}>
+              <div style={{
+                fontSize: '10px',
+                color: '#666666',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                marginBottom: '8px'
+              }}>
+                Stacks
+              </div>
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '5px'
+              }}>
+                {profile.stacks.map((stack) => {
+                  const color = getStackColor(stack)
+                  return (
+                    <span
+                      key={stack}
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: '20px',
+                        background: `${color}22`,
+                        color: color,
+                        border: `1px solid ${color}44`,
+                        fontSize: '10px',
+                        fontWeight: '500'
+                      }}
+                    >
+                      {stack}
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          <div style={{
+            width: '100%',
+            height: '1px',
+            background: '#2a2a2a',
+            marginBottom: '14px'
+          }} />
+
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            flexWrap: 'wrap',
+            width: '100%'
+          }}>
             {profile.website && (
-              <a href={profile.website} target="_blank" rel="noopener noreferrer" style={{ color: theme.primary, textDecoration: 'none' }}>
+              <a 
+                href={getValidUrl(profile.website)} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{
+                  color: '#888888',
+                  textDecoration: 'none',
+                  fontSize: '11px',
+                  transition: 'color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}
+              >
                 🌐 Website
               </a>
             )}
             {profile.github_url && (
-              <a href={profile.github_url} target="_blank" rel="noopener noreferrer" style={{ color: theme.primary, textDecoration: 'none' }}>
+              <a 
+                href={getValidUrl(profile.github_url)} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{
+                  color: '#888888',
+                  textDecoration: 'none',
+                  fontSize: '11px',
+                  transition: 'color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}
+              >
                 🐙 GitHub
               </a>
             )}
             {profile.twitter_url && (
-              <a href={profile.twitter_url} target="_blank" rel="noopener noreferrer" style={{ color: theme.primary, textDecoration: 'none' }}>
+              <a 
+                href={getValidUrl(profile.twitter_url)} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{
+                  color: '#888888',
+                  textDecoration: 'none',
+                  fontSize: '11px',
+                  transition: 'color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}
+              >
                 🐦 Twitter
               </a>
             )}
             {profile.linkedin_url && (
-              <a href={profile.linkedin_url} target="_blank" rel="noopener noreferrer" style={{ color: theme.primary, textDecoration: 'none' }}>
+              <a 
+                href={getValidUrl(profile.linkedin_url)} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{
+                  color: '#888888',
+                  textDecoration: 'none',
+                  fontSize: '11px',
+                  transition: 'color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}
+              >
                 💼 LinkedIn
               </a>
             )}
           </div>
 
           {medals.length > 0 && (
-            <div style={{ 
-              display: 'flex', 
-              gap: '12px', 
-              justifyContent: 'center', 
+            <div style={{
+              display: 'flex',
               flexWrap: 'wrap',
-              marginTop: '16px'
+              gap: '5px',
+              marginTop: '16px',
+              paddingTop: '14px',
+              borderTop: '1px solid #2a2a3e',
+              width: '100%'
             }}>
-              {medals.map((medal) => {
+              {medals.slice(0, 3).map((medal) => {
                 const config = medalConfig[medal.tier]
                 return (
                   <div
@@ -248,240 +484,323 @@ export default function PublicProfile({ params }) {
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px',
-                      background: theme.card,
-                      border: `1px solid ${theme.border}`,
-                      padding: '8px 16px',
+                      gap: '3px',
+                      background: '#111111',
+                      padding: '2px 8px 2px 5px',
                       borderRadius: '20px',
+                      border: '1px solid #222222',
                       cursor: 'help',
-                      transition: 'all 0.2s'
+                      fontSize: '11px',
+                      color: '#888888'
                     }}
                     title={`${config?.name || medal.name}\n${config?.description || ''}\nEarned: ${new Date(medal.awarded_at).toLocaleDateString()}`}
                   >
-                    <span style={{ fontSize: '20px' }}>{medal.icon}</span>
-                    <span style={{ fontSize: '14px', fontWeight: '500' }}>
-                      {config?.name || medal.name}
-                    </span>
+                    <span style={{ fontSize: '12px' }}>{medal.icon}</span>
+                    <span>{config?.name || medal.name}</span>
                   </div>
                 )
               })}
+              {medals.length > 3 && (
+                <div style={{
+                  fontSize: '11px',
+                  color: '#666666',
+                  padding: '2px 4px'
+                }}>
+                  +{medals.length - 3}
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Products Section with View Toggle */}
-        <div style={{ marginTop: '48px' }}>
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            borderBottom: `1px solid ${theme.border}`,
-            paddingBottom: '12px',
-            marginBottom: '24px'
+        {/* ===== RIGHT COLUMN - PRODUCTS (SCROLLABLE) ===== */}
+        <div className="products-right" style={{
+          flex: 1,
+          paddingLeft: '24px',
+          overflowY: 'auto',
+          paddingBottom: '40px',
+          maxHeight: 'calc(100vh - 80px)'
+        }}>
+          <h2 style={{
+            fontSize: '18px',
+            fontWeight: '600',
+            color: '#ffffff',
+            marginBottom: '20px',
+            letterSpacing: '-0.01em'
           }}>
-            <h2 style={{ fontSize: '24px', fontWeight: '600', margin: 0 }}>
-              Products
-            </h2>
-            <div style={{ display: 'flex', gap: '6px', background: theme.card, borderRadius: '8px', padding: '4px', border: `1px solid ${theme.border}` }}>
-              <button
-                onClick={() => setViewMode('grid')}
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: '6px',
-                  background: viewMode === 'grid' ? theme.primary : 'transparent',
-                  color: viewMode === 'grid' ? 'white' : theme.textSecondary,
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <Icons.Grid />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: '6px',
-                  background: viewMode === 'list' ? theme.primary : 'transparent',
-                  color: viewMode === 'list' ? 'white' : theme.textSecondary,
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <Icons.List />
-              </button>
-            </div>
-          </div>
+            {productCount === 0 ? 'Products' : `${productCount} ${productCount === 1 ? 'Product' : 'Products'}`}
+          </h2>
 
-          {products.length === 0 ? (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '60px 20px',
-              background: theme.card,
-              borderRadius: '12px',
-              border: `1px solid ${theme.border}`
-            }}>
-              <p style={{ color: theme.textSecondary }}>No products to showcase yet</p>
-            </div>
-          ) : viewMode === 'grid' ? (
+          {allProducts.length === 0 ? (
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-              gap: '20px'
+              textAlign: 'center',
+              padding: '60px 20px',
+              color: '#666666'
             }}>
-              {products.map((product) => {
-                const categoryColor = product.categories?.color || '#6366f1'
-                const categoryName = product.categories?.name || 'Uncategorized'
-                
-                return (
-                  <div
-                    key={product.id}
-                    onClick={() => setSelectedProduct(product)}
-                    style={{
-                      background: theme.card,
-                      border: `1px solid ${theme.border}`,
-                      borderRadius: '12px',
-                      overflow: 'hidden',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-4px)'
-                      e.currentTarget.style.boxShadow = `0 8px 24px rgba(99, 102, 241, 0.15)`
-                      e.currentTarget.style.borderColor = theme.primary
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)'
-                      e.currentTarget.style.boxShadow = 'none'
-                      e.currentTarget.style.borderColor = theme.border
-                    }}
-                  >
-                    {product.thumbnail_url && (
-                      <img 
-                        src={product.thumbnail_url} 
-                        alt={product.name}
-                        style={{ width: '100%', height: '160px', objectFit: 'cover' }}
-                      />
-                    )}
-                    <div style={{ padding: '16px' }}>
-                      <h3 style={{ fontSize: '18px', fontWeight: '600', margin: '0 0 4px' }}>
-                        {product.name}
-                      </h3>
-                      <p style={{ fontSize: '14px', color: theme.textSecondary, margin: '0 0 8px' }}>
-                        {product.description?.slice(0, 80)}...
-                      </p>
-                      <span style={{
-                        fontSize: '12px',
-                        padding: '2px 10px',
-                        borderRadius: '12px',
-                        background: `${categoryColor}22`,
-                        color: categoryColor,
-                        border: `1px solid ${categoryColor}44`
-                      }}>
-                        {categoryName}
-                      </span>
-                    </div>
-                  </div>
-                )
-              })}
+              No products to showcase yet
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {products.map((product) => {
-                const categoryColor = product.categories?.color || '#6366f1'
-                const categoryName = product.categories?.name || 'Uncategorized'
-                
-                return (
-                  <div
-                    key={product.id}
-                    onClick={() => setSelectedProduct(product)}
+            <>
+              <div className="product-grid" style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: '12px'
+              }}>
+                {displayedProducts.map((product) => {
+                  const categoryColor = product.categories?.color || '#6366f1'
+                  const categoryName = product.categories?.name || 'Uncategorized'
+                  const isLiked = likedProducts[product.id] || false
+                  const likeCount = likeCounts[product.id] || 0
+
+                  return (
+                    <div
+                      key={product.id}
+                      onClick={() => setSelectedProduct(product)}
+                      style={{
+                        position: 'relative',
+                        background: '#111111',
+                        borderRadius: '10px',
+                        overflow: 'hidden',
+                        transition: 'all 0.25s cubic-bezier(0.22, 1.8, 0.5, 0.95)',
+                        cursor: 'pointer'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#161616'
+                        e.currentTarget.style.transform = 'translateY(-2px)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '#111111'
+                        e.currentTarget.style.transform = 'translateY(0)'
+                      }}
+                    >
+                      <div style={{
+                        position: 'relative',
+                        width: 'calc(100% - 12px)',
+                        aspectRatio: '16 / 10',
+                        overflow: 'hidden',
+                        borderRadius: '6px',
+                        margin: '6px 6px 0 6px'
+                      }}>
+                        {product.thumbnail_url ? (
+                          <img 
+                            src={product.thumbnail_url} 
+                            alt={product.name}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              transition: 'transform 0.4s ease'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.03)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                          />
+                        ) : (
+                          <div style={{
+                            width: '100%',
+                            height: '100%',
+                            background: '#1a1a1a',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '40px',
+                            color: '#333333'
+                          }}>
+                            📦
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{
+                        position: 'relative',
+                        zIndex: 1,
+                        padding: '10px 12px 12px',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        justifyContent: 'space-between',
+                        gap: '8px'
+                      }}>
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '2px',
+                          minWidth: 0
+                        }}>
+                          <span style={{
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            color: '#ffffff',
+                            letterSpacing: '-0.01em',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}>
+                            {product.name}
+                          </span>
+                          <span style={{
+                            fontSize: '11px',
+                            color: '#888888',
+                            lineHeight: '1.3'
+                          }}>
+                            {categoryName}
+                          </span>
+                          <span style={{
+                            fontSize: '11px',
+                            color: '#666666',
+                            lineHeight: '1.3'
+                          }}>
+                            {truncateDescription(product.description)}
+                          </span>
+                        </div>
+
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          flexShrink: 0,
+                          marginTop: '1px'
+                        }}>
+                          <button
+                            type="button"
+                            onClick={(e) => handleLike(e, product.id)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: 'none',
+                              border: 'none',
+                              color: '#888888',
+                              fontSize: '11px',
+                              fontWeight: '500',
+                              cursor: 'pointer',
+                              padding: '2px',
+                              transition: 'color 0.2s ease'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}
+                          >
+                            <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style={{ width: '16px', height: '16px', display: 'block', flexShrink: 0 }}>
+                              <path 
+                                d="M 6 2.5 C 8.124 2.5 9.612 3.972 10 5.951 C 10.388 3.972 11.876 2.5 14 2.5 C 16.486 2.5 18.5 4.515 18.5 7 C 18.5 14.485 10 18 10 18 C 10 18 1.5 14.485 1.5 7 C 1.5 4.515 3.515 2.5 6 2.5 Z"
+                                fill={isLiked ? '#ff4d4d' : 'none'}
+                                stroke={isLiked ? '#ff4d4d' : 'currentColor'}
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                            <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: '11px' }}>
+                              {formatCount(likeCount)}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* ===== SHOW MORE BUTTON ===== */}
+              {hasMore && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  marginTop: '24px'
+                }}>
+                  <button
+                    onClick={handleShowMore}
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '16px',
-                      background: theme.card,
-                      border: `1px solid ${theme.border}`,
-                      borderRadius: '12px',
-                      padding: '12px 20px',
+                      padding: '8px 24px',
+                      background: 'transparent',
+                      border: '1px solid #333333',
+                      borderRadius: '20px',
+                      color: '#888888',
+                      fontSize: '13px',
                       cursor: 'pointer',
                       transition: 'all 0.2s'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = theme.primary
-                      e.currentTarget.style.boxShadow = `0 4px 16px rgba(99, 102, 241, 0.1)`
+                      e.currentTarget.style.borderColor = '#6366f1'
+                      e.currentTarget.style.color = '#ffffff'
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = theme.border
-                      e.currentTarget.style.boxShadow = 'none'
+                      e.currentTarget.style.borderColor = '#333333'
+                      e.currentTarget.style.color = '#888888'
                     }}
                   >
-                    {product.thumbnail_url ? (
-                      <img 
-                        src={product.thumbnail_url} 
-                        alt={product.name}
-                        style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '8px' }}
-                      />
-                    ) : (
-                      <div style={{ width: '56px', height: '56px', borderRadius: '8px', background: theme.hover, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
-                        📦
-                      </div>
-                    )}
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: '600', fontSize: '16px' }}>{product.name}</div>
-                      <div style={{ fontSize: '14px', color: theme.textSecondary }}>{product.description?.slice(0, 80)}...</div>
-                    </div>
-                    <span style={{
-                      fontSize: '12px',
-                      padding: '2px 10px',
-                      borderRadius: '12px',
-                      background: `${categoryColor}22`,
-                      color: categoryColor,
-                      border: `1px solid ${categoryColor}44`
-                    }}>
-                      {categoryName}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
+                    Show More
+                  </button>
+                </div>
+              )}
+            </>
           )}
-        </div>
-
-        {/* Footer */}
-        <div style={{ 
-          marginTop: '60px', 
-          paddingTop: '24px', 
-          borderTop: `1px solid ${theme.border}`,
-          textAlign: 'center',
-          color: theme.textSecondary,
-          fontSize: '14px'
-        }}>
-          Built with Shipfolio ⚡
         </div>
       </div>
 
-      {/* Product Modal */}
       {selectedProduct && (
         <ProductModal 
           product={selectedProduct} 
           onClose={() => setSelectedProduct(null)}
-          theme={theme}
-          isDark={isDark}
         />
       )}
+
+      <style>{`
+        @media (max-width: 1200px) {
+          .product-grid {
+            grid-template-columns: repeat(3, 1fr) !important;
+          }
+        }
+
+        @media (max-width: 992px) {
+          .product-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .container {
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+          .profile-left {
+            width: 100% !important;
+            position: relative !important;
+            top: 0 !important;
+            height: auto !important;
+            border-right: none !important;
+            border-bottom: 1px solid #2a2a2a !important;
+            padding-right: 0 !important;
+            padding-bottom: 20px !important;
+            margin-bottom: 24px !important;
+            align-items: center !important;
+            text-align: center !important;
+          }
+          .profile-left > div {
+            align-items: center !important;
+            text-align: center !important;
+          }
+          .products-right {
+            padding-left: 0 !important;
+            max-height: none !important;
+            overflow-y: visible !important;
+          }
+          .product-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .product-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }
 
 // ============================================================
-// PRODUCT MODAL - Link next to category, text link with icon
+// PRODUCT MODAL
 // ============================================================
-function ProductModal({ product, onClose, theme, isDark }) {
+function ProductModal({ product, onClose }) {
   const [sections, setSections] = useState([])
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
@@ -516,7 +835,6 @@ function ProductModal({ product, onClose, theme, isDark }) {
   const categoryColor = product.categories?.color || '#6366f1'
   const categoryName = product.categories?.name || 'Uncategorized'
 
-  // Helper to fix URLs - always add https:// if missing
   const getValidUrl = (url) => {
     if (!url) return null
     if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -525,7 +843,6 @@ function ProductModal({ product, onClose, theme, isDark }) {
     return `https://${url}`
   }
 
-  // External Link Icon
   const ExternalLinkIcon = () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" stroke="currentColor"/>
@@ -539,19 +856,18 @@ function ProductModal({ product, onClose, theme, isDark }) {
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.7)',
-        backdropFilter: 'blur(8px)',
+        background: 'rgba(0,0,0,0.8)',
+        backdropFilter: 'blur(12px)',
         zIndex: 1000,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '20px',
-        animation: 'fadeIn 0.2s ease'
+        padding: '20px'
       }}
       onClick={handleOverlayClick}
     >
       <div style={{
-        background: theme.card,
+        background: '#111111',
         borderRadius: '16px',
         maxWidth: '800px',
         width: '100%',
@@ -559,10 +875,8 @@ function ProductModal({ product, onClose, theme, isDark }) {
         overflowY: 'auto',
         padding: '40px',
         position: 'relative',
-        border: `1px solid ${theme.border}`,
-        animation: 'slideUp 0.3s ease'
+        border: '1px solid #222222'
       }}>
-        {/* Close Button */}
         <button
           onClick={onClose}
           style={{
@@ -573,22 +887,22 @@ function ProductModal({ product, onClose, theme, isDark }) {
             border: 'none',
             fontSize: '24px',
             cursor: 'pointer',
-            color: theme.textSecondary,
+            color: '#666666',
             transition: 'color 0.2s',
             zIndex: 10
           }}
+          onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
+          onMouseLeave={(e) => e.currentTarget.style.color = '#666666'}
         >
           ✕
         </button>
 
-        {/* ===== PRODUCT HEADER: Thumbnail + Title + Category + Link ===== */}
         <div style={{
           display: 'flex',
           gap: '20px',
           marginBottom: '16px',
           alignItems: 'flex-start'
         }}>
-          {/* Thumbnail */}
           {product.thumbnail_url ? (
             <img 
               src={product.thumbnail_url} 
@@ -606,25 +920,24 @@ function ProductModal({ product, onClose, theme, isDark }) {
               width: '120px',
               height: '120px',
               borderRadius: '12px',
-              background: theme.hover,
+              background: '#1a1a1a',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: '48px',
               flexShrink: 0,
-              color: theme.textSecondary
+              color: '#333333'
             }}>
               📦
             </div>
           )}
 
-          {/* Title + Category + Link (all on same row) */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <h2 style={{ 
               fontSize: '24px', 
               fontWeight: '700', 
               margin: '0 0 8px',
-              color: theme.text
+              color: '#ffffff'
             }}>
               {product.name}
             </h2>
@@ -634,7 +947,6 @@ function ProductModal({ product, onClose, theme, isDark }) {
               gap: '12px', 
               flexWrap: 'wrap'
             }}>
-              {/* Category Badge */}
               <span style={{
                 fontSize: '12px',
                 padding: '2px 10px',
@@ -645,8 +957,6 @@ function ProductModal({ product, onClose, theme, isDark }) {
               }}>
                 {categoryName}
               </span>
-
-              {/* Website Link - Text link with icon, next to category */}
               {product.website_url && (
                 <a
                   href={getValidUrl(product.website_url)}
@@ -657,7 +967,7 @@ function ProductModal({ product, onClose, theme, isDark }) {
                     alignItems: 'center',
                     gap: '4px',
                     fontSize: '13px',
-                    color: theme.primary,
+                    color: '#6366f1',
                     textDecoration: 'none',
                     transition: 'opacity 0.2s'
                   }}
@@ -668,8 +978,6 @@ function ProductModal({ product, onClose, theme, isDark }) {
                   Visit Website
                 </a>
               )}
-
-              {/* GitHub Link - Text link with icon, next to category */}
               {product.github_url && (
                 <a
                   href={getValidUrl(product.github_url)}
@@ -680,7 +988,7 @@ function ProductModal({ product, onClose, theme, isDark }) {
                     alignItems: 'center',
                     gap: '4px',
                     fontSize: '13px',
-                    color: theme.textSecondary,
+                    color: '#888888',
                     textDecoration: 'none',
                     transition: 'opacity 0.2s'
                   }}
@@ -695,34 +1003,30 @@ function ProductModal({ product, onClose, theme, isDark }) {
           </div>
         </div>
 
-        {/* ===== DESCRIPTION ===== */}
-        <div style={{ marginBottom: '16px' }}>
-          <p style={{ 
-            fontSize: '16px', 
-            color: theme.textSecondary,
-            lineHeight: '1.6',
-            margin: 0
-          }}>
-            {product.description}
-          </p>
-        </div>
+        <p style={{ 
+          fontSize: '16px', 
+          color: '#888888',
+          lineHeight: '1.6',
+          marginBottom: '16px'
+        }}>
+          {product.description}
+        </p>
 
-        {/* ===== META INFO ===== */}
         <div style={{ 
           display: 'flex', 
           gap: '12px', 
           flexWrap: 'wrap',
           marginBottom: '20px',
           paddingBottom: '20px',
-          borderBottom: `1px solid ${theme.border}`
+          borderBottom: '1px solid #222222'
         }}>
           {product.build_time && (
             <span style={{
               padding: '4px 12px',
               borderRadius: '20px',
-              background: theme.hover,
+              background: '#1a1a1a',
               fontSize: '13px',
-              color: theme.textSecondary
+              color: '#888888'
             }}>
               ⏱️ {product.build_time}
             </span>
@@ -731,25 +1035,24 @@ function ProductModal({ product, onClose, theme, isDark }) {
             <span style={{
               padding: '4px 12px',
               borderRadius: '20px',
-              background: theme.hover,
+              background: '#1a1a1a',
               fontSize: '13px',
-              color: theme.textSecondary
+              color: '#888888'
             }}>
               📅 {new Date(product.launch_date).toLocaleDateString()}
             </span>
           )}
         </div>
 
-        {/* ===== SECTIONS ===== */}
         {loading ? (
-          <p style={{ color: theme.textSecondary }}>Loading sections...</p>
+          <p style={{ color: '#666666' }}>Loading sections...</p>
         ) : sections.length > 0 ? (
           <div>
             <h3 style={{ 
               fontSize: '18px', 
               fontWeight: '600', 
               marginBottom: '16px',
-              color: theme.text
+              color: '#ffffff'
             }}>
               Details
             </h3>
@@ -759,13 +1062,13 @@ function ProductModal({ product, onClose, theme, isDark }) {
                   fontSize: '16px', 
                   fontWeight: '600', 
                   marginBottom: '6px',
-                  color: theme.text
+                  color: '#ffffff'
                 }}>
                   {section.title}
                 </h4>
                 <div style={{ 
                   fontSize: '15px', 
-                  color: theme.textSecondary,
+                  color: '#888888',
                   lineHeight: '1.6',
                   whiteSpace: 'pre-wrap'
                 }}>
@@ -776,17 +1079,6 @@ function ProductModal({ product, onClose, theme, isDark }) {
           </div>
         ) : null}
       </div>
-
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes slideUp {
-          from { transform: translateY(20px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-      `}</style>
     </div>
   )
 }
