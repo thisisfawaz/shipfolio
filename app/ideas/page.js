@@ -44,7 +44,7 @@ function SortableIdea({ idea, onToggle, onDelete, onEdit, index }) {
     background: isDragging ? '#1c1c2e' : 'transparent',
     cursor: 'grab',
     transition: 'background 0.2s',
-    touchAction: 'none',
+    touchAction: 'pan-y',
   }
 
   return (
