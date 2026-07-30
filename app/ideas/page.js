@@ -542,9 +542,10 @@ export default function IdeasPage() {
                         gap: '14px',
                         padding: '12px 16px',
                         borderBottom: index < ideas.length - 1 ? '1px solid #1c1c2e' : 'none',
-                        background: '#1c1c2e'
+                        background: '#1c1c2e',
+                        minWidth: 0
                       }}>
-                        <div style={{ width: '22px', minWidth: '22px' }} />
+                        <div style={{ width: '22px', minWidth: '22px', flexShrink: 0 }} />
                         <input
                           ref={editInputRef}
                           type="text"
@@ -554,6 +555,7 @@ export default function IdeasPage() {
                           onBlur={() => handleSaveEdit(idea.id)}
                           style={{
                             flex: 1,
+                            minWidth: 0,
                             padding: '4px 8px',
                             background: '#0a0a0f',
                             border: '1px solid #6366f1',
@@ -585,7 +587,8 @@ export default function IdeasPage() {
                             color: '#666666',
                             cursor: 'pointer',
                             display: 'flex',
-                            alignItems: 'center'
+                            alignItems: 'center',
+                            flexShrink: 0
                           }}
                         >
                           ✕
