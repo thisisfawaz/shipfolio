@@ -712,7 +712,7 @@ export default function SettingsPage() {
 
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '4px', color: '#a1a1b9', fontSize: '13px' }}>
-                <Icons.Twitter /> Twitter / X
+                <Icons.Twitter /> X (Twitter)
               </label>
               <input
                 name="twitter_url"
@@ -728,7 +728,7 @@ export default function SettingsPage() {
                   fontSize: '14px',
                   fontFamily: 'inherit'
                 }}
-                placeholder="https://twitter.com/username"
+                placeholder="https://x.com/username"
               />
             </div>
 

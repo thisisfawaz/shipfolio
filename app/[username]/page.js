@@ -593,7 +593,7 @@ export default function PublicProfile({ params }) {
                   onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
                   onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}
                 >
-                  🐦 Twitter
+                  🐦 X (Twitter)
                 </a>
               )}
               {profile.linkedin_url && (
