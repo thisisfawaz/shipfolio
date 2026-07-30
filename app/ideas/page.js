@@ -419,7 +419,7 @@ export default function IdeasPage() {
           <p style={{ color: '#a1a1b9' }}>Capture and track your product ideas</p>
         </div>
 
-        {/* Add New Idea Input - Auto-expanding + Manual Resize with visible handle */}
+        {/* Add New Idea Input - Auto-expanding only */}
         <form onSubmit={handleAddIdeas} style={{ marginBottom: '24px' }}>
           <div style={{
             display: 'flex',
@@ -434,58 +434,30 @@ export default function IdeasPage() {
           onFocus={(e) => e.currentTarget.style.borderColor = '#6366f1'}
           onBlur={(e) => e.currentTarget.style.borderColor = '#2a2a3e'}
           >
-            <div style={{ position: 'relative' }}>
-              <textarea
-                ref={textareaRef}
-                value={newIdeaText}
-                onChange={handleTextareaChange}
-                onKeyDown={handleKeyDown}
-                placeholder="Add new idea... press Enter to go to a new line"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px 32px 12px',
-                  background: '#0a0a0f',
-                  border: '1px solid #1c1c2e',
-                  borderRadius: '8px',
-                  outline: 'none',
-                  color: '#f1f1f1',
-                  fontSize: '14px',
-                  fontFamily: 'inherit',
-                  resize: 'vertical',
-                  minHeight: '60px',
-                  height: textareaHeight,
-                  transition: 'height 0.1s ease'
-                }}
-                disabled={adding}
-              />
-              
-              {/* Custom Resize Handle - Visible on mobile */}
-              <div style={{
-                position: 'absolute',
-                bottom: '6px',
-                right: '6px',
-                width: '32px',
-                height: '32px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#555555',
-                pointerEvents: 'none',
-                fontSize: '16px',
-                lineHeight: 1,
-                userSelect: 'none',
-                background: 'rgba(20, 20, 30, 0.7)',
-                borderRadius: '6px',
-                border: '1px solid #2a2a3e'
-              }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <polyline points="16 8 16 16 8 16" stroke="currentColor"/>
-                  <line x1="12" y1="16" x2="16" y2="16" stroke="currentColor"/>
-                  <line x1="16" y1="12" x2="16" y2="16" stroke="currentColor"/>
-                </svg>
-              </div>
-            </div>
-
+            <textarea
+              ref={textareaRef}
+              value={newIdeaText}
+              onChange={handleTextareaChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Add new idea... press Enter to go to a new line"
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                background: '#0a0a0f',
+                border: '1px solid #1c1c2e',
+                borderRadius: '8px',
+                outline: 'none',
+                color: '#f1f1f1',
+                fontSize: '14px',
+                fontFamily: 'inherit',
+                resize: 'none',
+                minHeight: '60px',
+                height: textareaHeight,
+                overflow: 'hidden',
+                transition: 'height 0.1s ease'
+              }}
+              disabled={adding}
+            />
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: '12px', color: '#666666' }}>
                 {newIdeaText.split('\n').filter(line => line.trim() !== '').length || 0} ideas ready to add
