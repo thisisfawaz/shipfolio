@@ -10,6 +10,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  TouchSensor,
 } from '@dnd-kit/core'
 import {
   arrayMove,
@@ -42,28 +43,56 @@ function SortableIdea({ idea, onToggle, onDelete, onEdit, index }) {
     borderBottom: '1px solid #1c1c2e',
     background: isDragging ? '#1c1c2e' : 'transparent',
     cursor: 'grab',
-    transition: 'background 0.2s'
+    transition: 'background 0.2s',
+    touchAction: 'none',
   }
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
       {/* Drag Handle */}
-      <div {...listeners} style={{ 
-        color: '#444444', 
-        cursor: 'grab', 
-        display: 'flex', 
-        alignItems: 'center',
-        padding: '4px',
-        flexShrink: 0
-      }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="5" cy="6" r="1.5"/>
-          <circle cx="5" cy="12" r="1.5"/>
-          <circle cx="5" cy="18" r="1.5"/>
-          <circle cx="11" cy="6" r="1.5"/>
-          <circle cx="11" cy="12" r="1.5"/>
-          <circle cx="11" cy="18" r="1.5"/>
-        </svg>
+      <div 
+        {...listeners} 
+        style={{ 
+          color: '#666666',
+          cursor: 'grab',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '10px 6px',
+          minWidth: '28px',
+          minHeight: '36px',
+          flexShrink: 0,
+          touchAction: 'none',
+          borderRadius: '6px',
+          fontSize: '20px',
+          lineHeight: 1,
+          letterSpacing: '-2px',
+          userSelect: 'none',
+          WebkitUserSelect: 'none'
+        }}
+        onTouchStart={(e) => {
+          e.currentTarget.style.background = 'rgba(99, 102, 241, 0.1)'
+        }}
+        onTouchEnd={(e) => {
+          e.currentTarget.style.background = 'transparent'
+        }}
+      >
+        <span style={{ 
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '1px',
+          fontWeight: '300'
+        }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ transform: 'rotate(90deg)' }}>
+            <circle cx="6" cy="6" r="2.5"/>
+            <circle cx="6" cy="12" r="2.5"/>
+            <circle cx="6" cy="18" r="2.5"/>
+            <circle cx="14" cy="6" r="2.5"/>
+            <circle cx="14" cy="12" r="2.5"/>
+            <circle cx="14" cy="18" r="2.5"/>
+          </svg>
+        </span>
       </div>
 
       {/* Clickable Box - Toggles completed */}
@@ -130,7 +159,7 @@ function SortableIdea({ idea, onToggle, onDelete, onEdit, index }) {
       <button
         onClick={() => onDelete(idea.id)}
         style={{
-          padding: '4px',
+          padding: '6px',
           borderRadius: '6px',
           background: 'none',
           border: 'none',
@@ -150,7 +179,7 @@ function SortableIdea({ idea, onToggle, onDelete, onEdit, index }) {
           e.currentTarget.style.background = 'transparent'
         }}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
           <polyline points="3 6 5 6 21 6" stroke="currentColor"/>
           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor"/>
         </svg>
@@ -166,12 +195,23 @@ export default function IdeasPage() {
   const [adding, setAdding] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editingText, setEditingText] = useState('')
+  const [textareaHeight, setTextareaHeight] = useState('60px')
   const textareaRef = useRef(null)
   const editInputRef = useRef(null)
   const supabase = createClient()
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 5,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -223,6 +263,7 @@ export default function IdeasPage() {
     if (!error && data) {
       setIdeas([...ideas, ...data])
       setNewIdeaText('')
+      setTextareaHeight('60px')
     } else {
       console.error('Error adding ideas:', error)
     }
@@ -259,7 +300,6 @@ export default function IdeasPage() {
   const handleStartEdit = (id, text) => {
     setEditingId(id)
     setEditingText(text)
-    // Focus after render
     setTimeout(() => {
       if (editInputRef.current) {
         editInputRef.current.focus()
@@ -308,7 +348,22 @@ export default function IdeasPage() {
       textarea.value = value.substring(0, start) + '\n' + value.substring(end)
       setNewIdeaText(textarea.value)
       textarea.selectionStart = textarea.selectionEnd = start + 1
+      
+      updateTextareaHeight(textarea)
     }
+  }
+
+  const handleTextareaChange = (e) => {
+    const textarea = e.target
+    setNewIdeaText(textarea.value)
+    updateTextareaHeight(textarea)
+  }
+
+  const updateTextareaHeight = (textarea) => {
+    textarea.style.height = 'auto'
+    const newHeight = Math.min(textarea.scrollHeight, 300)
+    textarea.style.height = newHeight + 'px'
+    setTextareaHeight(newHeight + 'px')
   }
 
   const handleDragEnd = async (event) => {
@@ -321,13 +376,11 @@ export default function IdeasPage() {
       const newIdeas = arrayMove(ideas, oldIndex, newIndex)
       setIdeas(newIdeas)
 
-      // Update order_index in database for all affected items
       const updates = newIdeas.map((idea, index) => ({
         id: idea.id,
         order_index: index,
       }))
 
-      // Batch update order_index
       for (const update of updates) {
         await supabase
           .from('product_ideas')
@@ -366,7 +419,7 @@ export default function IdeasPage() {
           <p style={{ color: '#a1a1b9' }}>Capture and track your product ideas</p>
         </div>
 
-        {/* Add New Idea Input */}
+        {/* Add New Idea Input - Auto-expanding + Manual Resize with visible handle */}
         <form onSubmit={handleAddIdeas} style={{ marginBottom: '24px' }}>
           <div style={{
             display: 'flex',
@@ -381,28 +434,58 @@ export default function IdeasPage() {
           onFocus={(e) => e.currentTarget.style.borderColor = '#6366f1'}
           onBlur={(e) => e.currentTarget.style.borderColor = '#2a2a3e'}
           >
-            <textarea
-              ref={textareaRef}
-              value={newIdeaText}
-              onChange={(e) => setNewIdeaText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Add new idea... press Enter to go to a new line"
-              rows={3}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                background: '#0a0a0f',
-                border: '1px solid #1c1c2e',
-                borderRadius: '8px',
-                outline: 'none',
-                color: '#f1f1f1',
-                fontSize: '14px',
-                fontFamily: 'inherit',
-                resize: 'vertical',
-                minHeight: '60px'
-              }}
-              disabled={adding}
-            />
+            <div style={{ position: 'relative' }}>
+              <textarea
+                ref={textareaRef}
+                value={newIdeaText}
+                onChange={handleTextareaChange}
+                onKeyDown={handleKeyDown}
+                placeholder="Add new idea... press Enter to go to a new line"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px 32px 12px',
+                  background: '#0a0a0f',
+                  border: '1px solid #1c1c2e',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  color: '#f1f1f1',
+                  fontSize: '14px',
+                  fontFamily: 'inherit',
+                  resize: 'vertical',
+                  minHeight: '60px',
+                  height: textareaHeight,
+                  transition: 'height 0.1s ease'
+                }}
+                disabled={adding}
+              />
+              
+              {/* Custom Resize Handle - Visible on mobile */}
+              <div style={{
+                position: 'absolute',
+                bottom: '6px',
+                right: '6px',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#555555',
+                pointerEvents: 'none',
+                fontSize: '16px',
+                lineHeight: 1,
+                userSelect: 'none',
+                background: 'rgba(20, 20, 30, 0.7)',
+                borderRadius: '6px',
+                border: '1px solid #2a2a3e'
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <polyline points="16 8 16 16 8 16" stroke="currentColor"/>
+                  <line x1="12" y1="16" x2="16" y2="16" stroke="currentColor"/>
+                  <line x1="16" y1="12" x2="16" y2="16" stroke="currentColor"/>
+                </svg>
+              </div>
+            </div>
+
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: '12px', color: '#666666' }}>
                 {newIdeaText.split('\n').filter(line => line.trim() !== '').length || 0} ideas ready to add
@@ -470,7 +553,6 @@ export default function IdeasPage() {
                 {ideas.map((idea, index) => (
                   <div key={idea.id}>
                     {editingId === idea.id ? (
-                      // Edit mode
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
