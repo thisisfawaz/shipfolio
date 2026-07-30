@@ -52,6 +52,13 @@ export default function Sidebar({ children }) {
         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" stroke="currentColor"/>
       </svg>
     ),
+    Ideas: () => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+        <path d="M12 2a7 7 0 0 0-7 7c0 3.5 2.5 6.5 7 9 4.5-2.5 7-5.5 7-9a7 7 0 0 0-7-7z" stroke="currentColor"/>
+        <circle cx="12" cy="9" r="1.5" stroke="currentColor"/>
+        <line x1="12" y1="12" x2="12" y2="15" stroke="currentColor"/>
+      </svg>
+    ),
     Settings: () => (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
         <circle cx="12" cy="12" r="3" stroke="currentColor"/>
@@ -82,15 +89,13 @@ export default function Sidebar({ children }) {
     { name: 'Dashboard', path: '/dashboard', icon: Icons.Dashboard },
     { name: 'Products', path: '/products', icon: Icons.Package },
     { name: 'Categories', path: '/categories', icon: Icons.Folder },
+    { name: 'Product Ideas', path: '/ideas', icon: Icons.Ideas },
     { name: 'Settings', path: '/settings', icon: Icons.Settings },
   ]
 
-  // ============================================
-  // FIXED: Show sidebar with loading in content
-  // ============================================
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#0a0a0f' }}>
-      {/* SIDEBAR - Always visible */}
+      {/* SIDEBAR */}
       <aside style={{
         width: '240px',
         background: '#14141e',
@@ -107,7 +112,6 @@ export default function Sidebar({ children }) {
         transition: 'transform 0.3s ease',
         transform: isMobileMenuOpen ? 'translateX(0)' : 'translateX(0)',
       }}>
-        {/* Logo */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -124,7 +128,6 @@ export default function Sidebar({ children }) {
           </Link>
         </div>
 
-        {/* Navigation */}
         <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
           {navItems.map((item) => {
             const isActive = pathname === item.path
@@ -173,7 +176,6 @@ export default function Sidebar({ children }) {
           </Link>
         </nav>
 
-        {/* Footer */}
         <div style={{ borderTop: '1px solid #2a2a3e', paddingTop: '12px' }}>
           {!loading ? (
             <>
@@ -235,7 +237,6 @@ export default function Sidebar({ children }) {
               </button>
             </>
           ) : (
-            // Show a placeholder while loading
             <div style={{ padding: '8px 12px', color: '#a1a1b9', fontSize: '14px' }}>
               Loading...
             </div>
@@ -288,7 +289,6 @@ export default function Sidebar({ children }) {
         width: 'calc(100% - 240px)'
       }}>
         {loading ? (
-          // Show loading only in the content area, not full page
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
