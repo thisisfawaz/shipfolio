@@ -359,9 +359,7 @@ export default function IdeasPage() {
     updateTextareaHeight(textarea)
   }
 
-  // FIX: Auto-expand with one empty line below (scrollHeight + lineHeight)
   const updateTextareaHeight = (textarea) => {
-    // Reset to auto to measure content
     textarea.style.height = 'auto'
     
     const scrollHeight = textarea.scrollHeight
@@ -369,7 +367,6 @@ export default function IdeasPage() {
     const minHeight = 60
     const maxHeight = 300
     
-    // Add one line of space below (scrollHeight + lineHeight)
     const newHeight = Math.min(Math.max(scrollHeight + lineHeight, minHeight), maxHeight)
     
     textarea.style.height = newHeight + 'px'
@@ -429,7 +426,7 @@ export default function IdeasPage() {
           <p style={{ color: '#a1a1b9' }}>Capture and track your product ideas</p>
         </div>
 
-        {/* Add New Idea Input - Auto-expanding with one empty line below */}
+        {/* Add New Idea Input */}
         <form onSubmit={handleAddIdeas} style={{ marginBottom: '24px' }}>
           <div style={{
             display: 'flex',
@@ -500,7 +497,7 @@ export default function IdeasPage() {
           </div>
         </form>
 
-        {/* Ideas List with Drag & Drop */}
+        {/* Ideas List with Drag & Drop - FIXED SCROLL ON MOBILE */}
         {ideas.length === 0 ? (
           <div style={{
             background: '#14141e',
@@ -522,7 +519,10 @@ export default function IdeasPage() {
             border: '1px solid #2a2a3e',
             borderRadius: '14px',
             overflow: 'auto',
-            maxHeight: 'calc(100vh - 320px)'
+            WebkitOverflowScrolling: 'touch',
+            maxHeight: 'calc(100vh - 320px)',
+            minHeight: '100px',
+            touchAction: 'pan-y'
           }}>
             <DndContext
               sensors={sensors}
